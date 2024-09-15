@@ -19,7 +19,7 @@ git clone https://github.com/stefanpietrusky/ascvitv1.git
 ```bash 
 pip install -r requirements.txt
 ```
-3. install Ollama and load the model Llama3.1 (8B)
+3. install Ollama and load the model [Llama3.1](https://ollama.com/library/llama3.1) (8B)
 4. start the Streamlit app:
 ```bash 
 streamlit run app.py
