@@ -9,3 +9,18 @@ The repository is based on the article published at Towards Data Science. In thi
 The code to run the app is already in the repository as well as a script to remove missing values from data records.
 
 ![ASCVIT V! (Gif by author](images/ASCVITV1.gif)
+
+## Installing and running the application 
+1. clone this repository on your local computer: 
+```bash 
+git clone https://github.com/stefanpietrusky/ascvitv1.git
+```
+2. install the required dependencies:
+```bash 
+pip install -r requirements.txt
+```
+3. install Ollama and load the model Llama3.1 (8B)
+4. start the Streamlit app:
+```bash 
+streamlit run app.py
+```
