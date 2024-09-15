@@ -7,4 +7,5 @@ The repository is based on the article published at Towards Data Science. In thi
 ![ASCVIT V1 Overview of analysis methods (Image by author)](images/ASCVITV1_Overview.png)
 
 The code to run the app is already in the repository as well as a script to remove missing values from data records.
+
 ![ASCVIT V! (Gif by author](images/ASCVITV1.gif)
