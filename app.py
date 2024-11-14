@@ -2,7 +2,7 @@
 title: ASCVIT V1 [AUTOMATIC STATISTICAL CALCULATION, VISUALIZATION AND INTERPRETATION TOOL]
 author: stefanpietrusky
 author_url: https://downchurch.studio/
-version: 0.1
+version: 1.0
 """
 
 
