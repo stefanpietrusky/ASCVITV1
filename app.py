@@ -1,5 +1,5 @@
 """
-title: ASCVIT V1 [AUTOMATIC STATISTICAL CALCULATION, VISUALIZATION AND INTERPRETATION TOOL]
+title: ASCVIT V1.5 [AUTOMATIC STATISTICAL CALCULATION, VISUALIZATION AND INTERPRETATION TOOL]
 author: stefanpietrusky
 author_url: https://downchurch.studio/
 version: 1.0
@@ -66,7 +66,7 @@ def descriptive_statistics(df, numerical_columns):
         """)
     elif chart_type == "Correlation matrix":
         st.markdown("""
-        *Correlation matrix:**
+        **Correlation matrix:**
         The correlation matrix shows the linear relationships between numerical variables.
         A positive correlation indicates that high values in one variable also correlate with high values in another.
         """)
@@ -163,9 +163,7 @@ def plot_histogram(df, variable, apply_log_scale):
         f"The small difference between mean and median indicates a {distribution} distribution.\n"
         f"A strong concentration of data points is observed between {concentration_range[0]:.2f} and {concentration_range[1]:.2f}.\n"
         f"The scatter of the data is described as {scatter}, indicating a relatively tight distribution around the mean.\n\n"
-        f"Please analyze this distribution in the histogram, paying particular attention to symmetry, scatter, and potential deviations.\n"
-        f"Avoid calling the distribution normal unless there are explicit indications.\n"
-        f"Use only the names of the variables {variable} in the analysis!"
+        "Provide a standalone interpretation of this distribution without conversational language, focusing on symmetry, scatter, and potential deviations."
     )
 
     # Send request to the LLM
@@ -204,8 +202,7 @@ def plot_boxplot(df, variable, apply_log_scale):
         f"- Upper quartile (Q3): {q3:.2f}\n"
         f"- Interquartile range (IQR): {iqr:.2f}\n"
         f"- Potential outliers outside values from {lower_whisker:.2f} to {upper_whisker:.2f}.\n"
-        f"Please analyze this distribution and identify patterns or outliers.\n"
-        f"Use only the names of the variables {variable} in the analysis!"
+        "Interpret this distribution in a concise, non-conversational manner, identifying any patterns or outliers as shown in the boxplot."
     )
 
     # Send request to the LLM
@@ -267,8 +264,8 @@ def plot_pairplot(df, selected_vars):
             f"Here are the correlation and regression analyses between the selected variables:\n"
             f"{correlation_list}\n\n"
             f"{regression_list}\n\n"
-            f"Please analyze these relationships in detail based solely on the numerical values (correlation and regression lines).\n"
-            f"Use only the names of the variables {selected_vars} in the analysis!"
+            "Provide a clear statistical interpretation of the relationships between the selected variables, based on correlation and regression results. "
+            "Do not use conversational language; focus on explaining any significant patterns observed in the data."
         )
 
         # Send request to the LLM
@@ -284,9 +281,11 @@ def plot_correlation_matrix(df, selected_vars):
         corr_matrix = df[selected_vars].corr()
 
         # Display the correlation matrix
-        fig, ax = plt.subplots()
-        sns.heatmap(corr_matrix, annot=True, cmap='coolwarm', ax=ax)
-        ax.set_title("Correlation Matrix")
+        fig, ax = plt.subplots(figsize=(12, 10))  # Increase the figure size for better readability
+        sns.heatmap(corr_matrix, annot=True, annot_kws={"size": 10}, fmt=".2f", cmap='coolwarm', ax=ax)
+        ax.set_title("Correlation Matrix", fontsize=16)
+        ax.tick_params(axis='x', labelsize=10)
+        ax.tick_params(axis='y', labelsize=10)
         st.pyplot(fig)
 
         # Identify significant correlations
@@ -306,9 +305,8 @@ def plot_correlation_matrix(df, selected_vars):
             context = (
                 f"Here is an analysis of the significant correlations between the selected variables in the correlation matrix:\n"
                 f"{correlation_list}\n\n"
-                f"Please analyze the correlations solely based on their strength and significance.\n"
-                f"Use only the names of the variables {selected_vars} in the analysis!"
-                f"Focus in detail on the statistical relationship and patterns."
+                "Provide an objective interpretation of the correlations, focusing on their strength and significance. "
+                "Do not include conversational or exploratory language; describe only the statistical relationships and patterns observed."
             )
 
             # Send request to the LLM
@@ -414,8 +412,19 @@ def t_test(df, numerical_columns, categorical_columns):
                 st.write(f"In group 2 ({group2}) there are {len(outliers_group2)} outliers.")
             else:
                 st.write(f"In group 2 ({group2}) there are no significant outliers.")
-        else:
-            st.error("One or both groups contain no data after removing NaN values.")
+
+            # LLM interpretation
+            context = (
+                f"Please interpret the results of the t-Test as a standalone statistical report. "
+                f"Analyze the statistical significance of the difference between the groups '{group1}' and '{group2}' for the variable '{value_col}', "
+                f"with the following results:\n"
+                f"- t-Statistic: {t_stat:.2f}\n"
+                f"- p-Value: {p_value:.4f}\n\n"
+                "Present your analysis without using section headings or numbered steps, focusing solely on statistical interpretation."
+            )
+
+            response = query_llm_via_cli(context)
+            st.write(f"**t-Test Interpretation:** {response}")
 
 
 # Function for the ANOVA test
@@ -446,6 +455,7 @@ def anova_test(df, numerical_columns, categorical_columns):
                 plt.xticks(rotation=90)
                 st.pyplot(fig)
 
+                # Tukey's HSD test for significant ANOVA results
                 if anova_result.pvalue < 0.05:
                     st.write("The ANOVA test is significant. Tukey's HSD test will be performed.")
                     try:
@@ -463,6 +473,18 @@ def anova_test(df, numerical_columns, categorical_columns):
 
                     except Exception as e:
                         st.error(f"An error occurred during Tukey's HSD test: {str(e)}")
+
+                # LLM interpretation
+                context = (
+                    f"Performing an ANOVA for '{value_col}' across groups in '{group_col}':\n"
+                    f"- F-Value: {anova_result.statistic:.2f}\n"
+                    f"- p-Value: {anova_result.pvalue:.4f}\n"
+                    "Interpret these results, concentrating on whether the ANOVA suggests significant differences among the groups. "
+                    "Provide an objective analysis without conversational language, focusing on the implications of the findings."
+                )
+
+                response = query_llm_via_cli(context)
+                st.write(f"**ANOVA Interpretation:** {response}")
 
             except ValueError as e:
                 st.error(f"An error occurred: {str(e)}.")
@@ -491,16 +513,30 @@ def chi_square_test(df, categorical_columns):
                 st.error("The contingency table is invalid. Check the variables.")
             else:
                 chi2, p, dof, expected = stats.chi2_contingency(contingency_table)
-                st.markdown(f"**Chi-square:** {chi2}")
+                st.markdown(f"**Chi-square statistic:** {chi2}")
                 st.markdown(f"**p-Value:** {p}")
+                st.markdown(f"**Degrees of freedom:** {dof}")
                 
                 # Visualize the contingency table as a heatmap
                 st.write("**Heatmap of the contingency table:**")
                 fig, ax = plt.subplots(figsize=(12, 10))  # Larger display
-                sns.heatmap(contingency_table, annot=False, cmap="YlGnBu", ax=ax)
+                sns.heatmap(contingency_table, annot=True, cmap="YlGnBu", ax=ax)
                 ax.set_title(f"Heatmap of the contingency table: {cat_var1} vs. {cat_var2} top 10")
                 plt.xticks(rotation=90)
                 st.pyplot(fig)
+
+                # LLM interpretation
+                context = (
+                    f"Chi-square test for association between '{cat_var1}' and '{cat_var2}':\n"
+                    f"- Chi-square statistic: {chi2:.2f}\n"
+                    f"- p-Value: {p:.4f}\n"
+                    f"- Degrees of freedom: {dof}\n\n"
+                    "Interpret these results in a concise manner, focusing on whether the p-value indicates a significant association between the variables. "
+                    "Avoid conversational or exploratory language; describe only the statistical significance of the relationship."
+                )
+
+                response = query_llm_via_cli(context)
+                st.write(f"**Chi-square Test Interpretation:** {response}")
 
         except ValueError as e:
             st.error(f"An error occurred: {str(e)}.")
@@ -583,6 +619,20 @@ def linear_regression(df, numerical_columns):
                     ax.legend()
                     st.pyplot(fig)
 
+                # LLM interpretation for linear regression
+                context = (
+                    f"The linear regression analysis was performed with the dependent variable '{dependent_var}' "
+                    f"and independent variables {', '.join(independent_vars)}.\n"
+                    f"Regression coefficients:\n" +
+                    "\n".join([f"- {var}: {coef:.2f}" for var, coef in zip(independent_vars, model.coef_)]) +
+                    f"\nIntercept: {model.intercept_:.2f}\n\n"
+                    "Provide a straightforward interpretation of the relationship between the dependent and independent variables based on these coefficients. "
+                    "Focus on any notable trends without using conversational or exploratory language."
+                )
+
+                response = query_llm_via_cli(context)
+                st.write(f"**Linear Regression Interpretation:** {response}")
+
 
 # Function for logistic regression
 def logistic_regression(df, numerical_columns):
@@ -633,6 +683,19 @@ def logistic_regression(df, numerical_columns):
                     ax.legend()
                     st.pyplot(fig)
 
+                # LLM interpretation for logistic regression
+                context = (
+                    f"The logistic regression analysis was performed with the binary dependent variable '{dependent_var}' "
+                    f"and independent variables {', '.join(independent_vars)}.\n"
+                    f"Logistic regression coefficients:\n" +
+                    "\n".join([f"- {var}: {coef:.2f}" for var, coef in zip(independent_vars, model.coef_[0])]) +
+                    f"\nIntercept: {model.intercept_[0]:.2f}\n\n"
+                    "Interpret the impact of the independent variables on the likelihood of the dependent outcome in a statistical manner. "
+                    "Avoid conversational language; describe only significant predictors and their effects on the outcome."
+                )
+
+                response = query_llm_via_cli(context)
+                st.write(f"**Logistic Regression Interpretation:** {response}")
 
 # Function for multivariate regression
 def multivariate_regression(df, numerical_columns):
@@ -681,8 +744,24 @@ def multivariate_regression(df, numerical_columns):
                     ax.legend()
                     st.plotly_chart(fig)
 
+            # LLM interpretation for multivariate regression
+            context = (
+                f"The multivariate regression analysis was conducted with dependent variables {', '.join(dependent_vars)} "
+                f"and independent variables {', '.join(independent_vars)}.\n"
+                "The regression coefficients for each dependent variable are as follows:\n" +
+                "\n".join(
+                    [f"For {dep_var}:\n" + "\n".join([f"- {var}: {coef:.2f}" for var, coef in zip(independent_vars, model.coef_[i])]) 
+                    for i, dep_var in enumerate(dependent_vars)]
+                ) +
+                "\n\nProvide an objective interpretation of the relationship between the dependent and independent variables. "
+                "Focus solely on the statistical influence of each independent variable on the dependent outcomes without conversational or exploratory language."
+            )
 
-# Function for time series analysis with yearly averages
+            response = query_llm_via_cli(context)
+            st.write(f"**Multivariate Regression Interpretation:** {response}")
+
+
+# Function for time series analysis with LLM interpretation
 def perform_time_series_analysis(df, time_var, value_var):
     # Convert the time variable to date format and remove invalid data
     df[time_var] = pd.to_datetime(df[time_var], errors='coerce')
@@ -736,6 +815,21 @@ def perform_time_series_analysis(df, time_var, value_var):
         st.write(f"**Variance:** {df[value_var].var():.2f}")
         st.write(f"**Minimum {value_var}:** {y_min:.2f} in year {yearly_avg.loc[yearly_avg[value_var].idxmin(), 'year']}")
         st.write(f"**Maximum {value_var}:** {y_max:.2f} in year {yearly_avg.loc[yearly_avg[value_var].idxmax(), 'year']}")
+
+        
+        context = (
+            f"In this time series analysis of '{value_var}' over the years, the following key statistics were observed:\n"
+            f"- Overall average: {overall_avg:.2f}\n"
+            f"- Minimum value: {y_min:.2f} in year {yearly_avg.loc[yearly_avg[value_var].idxmin(), 'year']}\n"
+            f"- Maximum value: {y_max:.2f} in year {yearly_avg.loc[yearly_avg[value_var].idxmax(), 'year']}\n"
+            f"- Standard deviation: {df[value_var].std():.2f}\n"
+            "Provide a clear interpretation of the observed trends and patterns over time. "
+            "Avoid conversational language; focus on identifying any notable increases, decreases, or stability in the data."
+        )
+
+        # Send request to the LLM for analysis
+        response = query_llm_via_cli(context)
+        st.write(f"**Time Series Interpretation:** {response}")
 
 
 # Function for clustering methods
@@ -811,15 +905,34 @@ def perform_dbscan(X, eps, min_samples):
     visualize_clusters(X, 'DBSCAN Clustering')
 
 
-# Function to visualize clusters with PCA
+# Function to visualize cluster statistics dynamically based on detected numerical variables
+def display_cluster_statistics(cluster_stats, numerical_columns):
+    for cluster, stats in cluster_stats.items():
+        st.write(f"**Cluster {cluster}:**")
+        
+        # Erstelle das DataFrame dynamisch basierend auf den numerischen Spalten
+        stats_data = {
+            'Statistische Größe': ['Durchschnittswerte', 'Standardabweichung', 'IQR']
+        }
+        
+        for column in numerical_columns:
+            stats_data[column] = [
+                stats['mean'].get(column, np.nan),
+                stats['std_dev'].get(column, np.nan),
+                stats['iqr'].get(column, np.nan)
+            ]
+        
+        stats_df = pd.DataFrame(stats_data)
+        
+        st.table(stats_df)
+        st.write(f"Größe: {stats['size']} Punkte")
+
+
 def visualize_clusters(X, title):
     # Ensure that we have enough data points and variables
     num_samples, num_features = X.shape
-    
-    # Take the minimum of samples and features to adjust the number of components for PCA
     n_components = min(num_samples, num_features, 2)  # max 2 components, but fewer if not enough data
 
-    # If there are fewer than 2 variables or data points, PCA cannot be performed
     if n_components < 2:
         st.error("Not enough data points or variables to perform PCA.")
         return
@@ -836,14 +949,10 @@ def visualize_clusters(X, title):
         ax.set_xlabel(f'PCA 1' if n_components >= 1 else '')
         ax.set_ylabel(f'PCA 2' if n_components == 2 else '')
 
-        # Retrieve cluster assignments and their counts
         cluster_counts = X['Cluster'].value_counts()  
-
-        # Create legend
         legend_labels = [f"Cluster {int(cluster)} ({count} points)" for cluster, count in cluster_counts.items()]
         legend1 = ax.legend(handles=scatter.legend_elements()[0], labels=legend_labels)
         ax.add_artist(legend1)
-
         st.pyplot(fig)
 
         # Show the average values of the variables for each cluster
@@ -851,8 +960,27 @@ def visualize_clusters(X, title):
         cluster_means = X.groupby('Cluster').mean()
         st.dataframe(cluster_means)
 
+        # Generate a more readable summary context for the LLM
+        cluster_summary = "\n".join(
+            [
+                f"Cluster {int(cluster)}: "
+                + ", ".join([f"{var}: {value:.2f}" for var, value in means.items()])
+                for cluster, means in cluster_means.iterrows()
+            ]
+        )
+
+        context = (
+            f"The following clusters were identified based on the selected variables:\n{cluster_summary}\n\n"
+            "Provide a detailed statistical interpretation of these clusters, focusing strictly on patterns, "
+            "variability, and insights into data distribution. Avoid conversational, exploratory, or speculative language."
+        )
+
+        # Send the context to the LLM for interpretation
+        response = query_llm_via_cli(context)
+        st.write(f"**Cluster Analysis Interpretation:** {response}")
+
     except ValueError as e:
-        st.error(f"**Error:** Not enough variables were selected.")
+        st.error(f"**Error:** Not enough variables selected.")
 
 
 # Function to communicate with the LLM
@@ -860,7 +988,7 @@ def query_llm_via_cli(input_text):
     """Sends the question and context to the LLM and receives a response"""
     try:
         process = subprocess.Popen(
-            ["ollama", "run", "llama3.1"],
+            ["ollama", "run", "llama3.1p"],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -892,7 +1020,7 @@ def extract_relevant_answer(full_response):
 
 # Main function to start the app
 def main():
-    st.title("ASCVIT V1")
+    st.title("ASCVIT V1.5")
 
     # Sidebar for file upload
     st.sidebar.title("Settings")
